@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { StreamConfig, StreamStats, fetchStreamStats, checkStreamOnline } from '@/lib/streams';
+import { StreamConfig, StreamStats, fetchStreamStats } from '@/lib/streams';
 import { Activity, AlertCircle } from 'lucide-react';
 
 interface StreamCardProps {
@@ -14,29 +14,20 @@ const StreamCard = ({ stream }: StreamCardProps) => {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    // Initial check
-    checkStreamOnline(stream.streamUrl).then(setIsOnline);
-
-    // Fetch stats every second
+    // Fetch stats every second (do not decide online state from stats to avoid CORS false negatives)
     const statsInterval = setInterval(async () => {
-      const data = await fetchStreamStats(stream.statsUrl);
-      if (data) {
-        setStats(data);
-        setIsOnline(true);
-      } else {
-        setIsOnline(false);
+      try {
+        const data = await fetchStreamStats(stream.statsUrl);
+        if (data) {
+          setStats(data);
+        }
+      } catch (err) {
+        // Swallow errors to avoid noisy logs when preview cannot reach LAN
       }
     }, 1000);
 
-    // Check online status every 5 seconds
-    const onlineInterval = setInterval(async () => {
-      const online = await checkStreamOnline(stream.streamUrl);
-      setIsOnline(online);
-    }, 5000);
-
     return () => {
       clearInterval(statsInterval);
-      clearInterval(onlineInterval);
     };
   }, [stream]);
 
@@ -68,12 +59,16 @@ const StreamCard = ({ stream }: StreamCardProps) => {
       <CardContent className="p-0">
         {/* Stream Display */}
         <div className="relative aspect-video bg-black">
-          {isOnline && !imageError ? (
+          {!imageError ? (
             <img
               src={stream.streamUrl}
               alt={`${stream.name} live feed`}
               className="w-full h-full object-contain"
-              onError={() => setImageError(true)}
+              onLoad={() => setIsOnline(true)}
+              onError={() => {
+                setImageError(true);
+                setIsOnline(false);
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
