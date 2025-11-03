@@ -4,6 +4,7 @@ import { logout, getCurrentUser } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { LogOut, Settings, User, Users, Dog, DoorOpen } from 'lucide-react';
 import DashboardCard from './DashboardCard';
+import { PlakshaLogo } from './PlakshaLogo';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -125,6 +126,8 @@ const Dashboard = () => {
           </p>
         </div>
       </footer>
+      
+      <PlakshaLogo />
     </div>
   );
 };

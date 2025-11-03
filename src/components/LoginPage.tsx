@@ -8,6 +8,7 @@ import { login } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { LogIn, Building2 } from 'lucide-react';
 import plakshaBuilding from '@/assets/plaksha-building.png';
+import { PlakshaLogo } from './PlakshaLogo';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -121,6 +122,7 @@ const LoginPage = () => {
       <div className="absolute bottom-6 text-center text-cream/90">
         <p className="text-sm font-medium">Made by Dixon IoT Lab</p>
       </div>
+      <PlakshaLogo />
     </div>
   );
 };

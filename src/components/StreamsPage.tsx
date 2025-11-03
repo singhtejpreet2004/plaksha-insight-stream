@@ -8,6 +8,7 @@ import { STREAMS } from '@/lib/streams';
 import { TimeRange, generateCSV, downloadCSV } from '@/lib/csv';
 import StreamCard from './StreamCard';
 import { useToast } from '@/hooks/use-toast';
+import { PlakshaLogo } from './PlakshaLogo';
 
 const StreamsPage = () => {
   const navigate = useNavigate();
@@ -177,6 +178,8 @@ const StreamsPage = () => {
           </p>
         </div>
       </footer>
+      
+      <PlakshaLogo />
     </div>
   );
 };
