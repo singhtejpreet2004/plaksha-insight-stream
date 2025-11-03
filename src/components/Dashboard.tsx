@@ -113,7 +113,7 @@ const Dashboard = () => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card/50 backdrop-blur-sm mt-auto py-6">
+      <footer className="fixed bottom-0 left-0 right-0 border-t bg-card/80 backdrop-blur-sm py-4 z-40">
         <div className="container mx-auto px-6 text-center">
           <p className="text-sm font-medium text-muted-foreground">
             Made by <span className="text-primary font-bold">Dixon IoT Lab</span>
