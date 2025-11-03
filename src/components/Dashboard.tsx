@@ -110,12 +110,6 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Info Banner */}
-        <div className="mt-12 p-6 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 animate-slide-up">
-          <p className="text-center text-sm text-muted-foreground">
-            💡 <span className="font-semibold">Tip:</span> Click on the <span className="font-semibold text-primary">Head Count</span> card to view live camera streams and detailed analytics
-          </p>
-        </div>
       </main>
 
       {/* Footer */}
