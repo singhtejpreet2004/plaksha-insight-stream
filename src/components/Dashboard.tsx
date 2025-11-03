@@ -23,6 +23,10 @@ const Dashboard = () => {
   const handleCardClick = (cardName: string) => {
     if (cardName === 'Head Count') {
       navigate('/streams');
+    } else if (cardName === 'Dog Detection') {
+      navigate('/dog-detection');
+    } else if (cardName === 'Entry/Exit') {
+      navigate('/entry-exit');
     }
   };
 
@@ -88,7 +92,7 @@ const Dashboard = () => {
             title="Dog Detection"
             description="Real-time detection and tracking of dogs on campus premises"
             icon={<Dog className="w-10 h-10" />}
-            isActive={false}
+            isActive={true}
             onClick={() => handleCardClick('Dog Detection')}
           />
 
@@ -105,7 +109,7 @@ const Dashboard = () => {
             title="Entry/Exit"
             description="Track entry and exit patterns with intelligent flow analysis"
             icon={<DoorOpen className="w-10 h-10" />}
-            isActive={false}
+            isActive={true}
             onClick={() => handleCardClick('Entry/Exit')}
           />
         </div>

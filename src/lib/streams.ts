@@ -18,32 +18,32 @@ export const STREAMS: StreamConfig[] = [
     name: 'Gate 02 Entry',
     location: 'Main Gate 02 - Entry Point',
     model: 'YOLOv8 + BoT-SORT Head Count',
-    streamUrl: 'http://10.1.40.46:5000/stream',
-    statsUrl: 'http://10.1.40.46:5000/stats'
+    streamUrl: '/api/stream/5000',
+    statsUrl: '/api/stats/5000'
   },
   {
     id: 'gate1_main_entry',
     name: 'Gate 1 Main Entry',
     location: 'Gate 1 - Main Entry Point',
     model: 'YOLOv8 + BoT-SORT Head Count',
-    streamUrl: 'http://10.1.40.46:5001/stream',
-    statsUrl: 'http://10.1.40.46:5001/stats'
+    streamUrl: '/api/stream/5001',
+    statsUrl: '/api/stats/5001'
   },
   {
     id: 'gate1_outside_left',
     name: 'Gate 1 Outside Left',
     location: 'Gate 1 - Left Exterior',
     model: 'YOLOv8 + BoT-SORT Head Count',
-    streamUrl: 'http://10.1.40.46:5002/stream',
-    statsUrl: 'http://10.1.40.46:5002/stats'
+    streamUrl: '/api/stream/5002',
+    statsUrl: '/api/stats/5002'
   },
   {
     id: 'gate2_exit',
     name: 'Gate 2 Exit',
     location: 'Gate 2 - Exit Point',
     model: 'YOLOv8 + BoT-SORT Head Count',
-    streamUrl: 'http://10.1.40.46:5003/stream',
-    statsUrl: 'http://10.1.40.46:5003/stats'
+    streamUrl: '/api/stream/5003',
+    statsUrl: '/api/stats/5003'
   }
 ];
 

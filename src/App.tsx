@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LoginPage from "./components/LoginPage";
 import Dashboard from "./components/Dashboard";
 import StreamsPage from "./components/StreamsPage";
+import DogDetection from "./pages/DogDetection";
+import EntryExit from "./pages/EntryExit";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -32,6 +34,22 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <StreamsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dog-detection"
+            element={
+              <ProtectedRoute>
+                <DogDetection />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/entry-exit"
+            element={
+              <ProtectedRoute>
+                <EntryExit />
               </ProtectedRoute>
             }
           />
