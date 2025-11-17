@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ArrowLeft, Download, FileDown } from 'lucide-react';
-import { STREAMS } from '@/lib/streams';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Download, Plus, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { STREAMS, StreamConfig } from '@/lib/streams';
 import { TimeRange, generateCSV, downloadCSV } from '@/lib/csv';
 import StreamCard from './StreamCard';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +17,60 @@ const StreamsPage = () => {
   const { toast } = useToast();
   const [selectedRange, setSelectedRange] = useState<TimeRange>('1day');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [streams, setStreams] = useState<StreamConfig[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newStreamName, setNewStreamName] = useState('');
+  const [newStreamUrl, setNewStreamUrl] = useState('');
+
+  const STREAMS_PER_PAGE = 4;
+  const totalPages = Math.ceil(streams.length / STREAMS_PER_PAGE);
+  const currentStreams = streams.slice(
+    currentPage * STREAMS_PER_PAGE,
+    (currentPage + 1) * STREAMS_PER_PAGE
+  );
+
+  useEffect(() => {
+    // Load streams from localStorage
+    const savedStreams = localStorage.getItem('customStreams');
+    const customStreams = savedStreams ? JSON.parse(savedStreams) : [];
+    setStreams([...STREAMS, ...customStreams]);
+  }, []);
+
+  const handleAddStream = () => {
+    if (!newStreamName.trim() || !newStreamUrl.trim()) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide both stream name and URL',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    const newStream: StreamConfig = {
+      id: `custom_${Date.now()}`,
+      name: newStreamName,
+      location: 'Custom Stream',
+      model: 'Custom Stream',
+      streamUrl: newStreamUrl,
+      statsUrl: newStreamUrl.replace('/stream', '/stats')
+    };
+
+    const savedStreams = localStorage.getItem('customStreams');
+    const customStreams = savedStreams ? JSON.parse(savedStreams) : [];
+    customStreams.push(newStream);
+    localStorage.setItem('customStreams', JSON.stringify(customStreams));
+
+    setStreams([...streams, newStream]);
+    setNewStreamName('');
+    setNewStreamUrl('');
+    setIsAddDialogOpen(false);
+
+    toast({
+      title: 'Stream Added',
+      description: `${newStreamName} has been added successfully`,
+    });
+  };
 
   const handleDownload = async (streamId: string, streamName: string) => {
     setIsDownloading(true);
@@ -28,7 +84,7 @@ const StreamsPage = () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Fetch current stats for the stream
-    const stream = STREAMS.find(s => s.id === streamId);
+    const stream = streams.find(s => s.id === streamId);
     let currentStats = null;
     
     if (stream) {
@@ -54,6 +110,14 @@ const StreamsPage = () => {
     setIsDownloading(false);
   };
 
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-background">
       {/* Header */}
@@ -74,7 +138,7 @@ const StreamsPage = () => {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                   Head Count Streams
                 </h1>
-                <p className="text-sm text-muted-foreground">Real-time monitoring • 4 Active Cameras</p>
+                <p className="text-sm text-muted-foreground">Real-time monitoring • {streams.length} Cameras</p>
               </div>
             </div>
 
@@ -98,30 +162,31 @@ const StreamsPage = () => {
                     <label className="text-sm font-medium">Time Range</label>
                     <Select value={selectedRange} onValueChange={(value) => setSelectedRange(value as TimeRange)}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select time range" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="1hour">Last 1 Hour</SelectItem>
+                        <SelectItem value="6hours">Last 6 Hours</SelectItem>
+                        <SelectItem value="12hours">Last 12 Hours</SelectItem>
                         <SelectItem value="1day">Last 24 Hours</SelectItem>
                         <SelectItem value="7days">Last 7 Days</SelectItem>
-                        <SelectItem value="1month">Last Month</SelectItem>
-                        <SelectItem value="3months">Last 3 Months</SelectItem>
-                        <SelectItem value="6months">Last 6 Months</SelectItem>
+                        <SelectItem value="30days">Last 30 Days</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Select Camera</label>
-                    <div className="grid gap-2">
-                      {STREAMS.map((stream) => (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {streams.map(stream => (
                         <Button
                           key={stream.id}
                           variant="outline"
-                          className="justify-start hover:bg-primary hover:text-primary-foreground transition-all"
+                          className="w-full justify-start"
                           onClick={() => handleDownload(stream.id, stream.name)}
                           disabled={isDownloading}
                         >
-                          <FileDown className="mr-2 h-4 w-4" />
+                          <Download className="mr-2 h-4 w-4" />
                           {stream.name}
                         </Button>
                       ))}
@@ -136,45 +201,103 @@ const StreamsPage = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
-          {STREAMS.map((stream) => (
+        {/* Carousel Controls */}
+        <div className="flex items-center justify-between mb-6">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handlePrevPage}
+            disabled={currentPage === 0}
+            className="hover:bg-accent transition-all disabled:opacity-50"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </Button>
+          
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Page {currentPage + 1} of {totalPages}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Showing {currentStreams.length} of {streams.length} streams
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages - 1}
+            className="hover:bg-accent transition-all disabled:opacity-50"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </Button>
+        </div>
+
+        {/* Streams Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fade-in">
+          {currentStreams.map((stream) => (
             <StreamCard key={stream.id} stream={stream} />
           ))}
         </div>
 
-        {/* Info Section */}
-        <div className="mt-8 p-6 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
-          <h3 className="font-semibold text-lg mb-2 text-foreground">About the Monitoring System</h3>
-          <p className="text-sm text-muted-foreground mb-3">
-            This system uses YOLOv8 with BoT-SORT tracking algorithm for accurate real-time head counting.
-            All streams are processed locally with FP16 precision on CUDA-enabled GPUs for optimal performance.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold text-primary">4</p>
-              <p className="text-xs text-muted-foreground">Active Cameras</p>
-            </div>
-            <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold text-secondary">30+</p>
-              <p className="text-xs text-muted-foreground">FPS Average</p>
-            </div>
-            <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold text-primary">24/7</p>
-              <p className="text-xs text-muted-foreground">Monitoring</p>
-            </div>
-            <div className="p-3 rounded-lg bg-background/50">
-              <p className="text-2xl font-bold text-secondary">Real-time</p>
-              <p className="text-xs text-muted-foreground">Processing</p>
-            </div>
-          </div>
+        {/* Add Stream Button */}
+        <div className="flex justify-center">
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all shadow-lg"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Add New Stream
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Stream</DialogTitle>
+                <DialogDescription>
+                  Add a custom camera stream to the monitoring system
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="streamName">Stream Name *</Label>
+                  <Input
+                    id="streamName"
+                    placeholder="e.g., Main Entrance Camera"
+                    value={newStreamName}
+                    onChange={(e) => setNewStreamName(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="streamUrl">Stream URL *</Label>
+                  <Input
+                    id="streamUrl"
+                    placeholder="e.g., http://10.1.40.46:6001/stream"
+                    value={newStreamUrl}
+                    onChange={(e) => setNewStreamUrl(e.target.value)}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleAddStream}
+                  className="w-full bg-gradient-to-r from-primary to-secondary"
+                >
+                  Add Stream
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card/50 backdrop-blur-sm mt-12 py-6">
-        <div className="container mx-auto px-6 text-center">
-          <p className="text-sm font-medium text-muted-foreground">
-            Made by <span className="text-primary font-bold">Dixon IoT Lab</span>
+      <footer className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-sm py-3 z-40">
+        <div className="container mx-auto px-6">
+          <p className="text-center text-sm text-muted-foreground">
+            Made by <span className="font-semibold text-foreground">Dixon IoT Lab</span>
           </p>
         </div>
       </footer>
