@@ -241,13 +241,47 @@ export interface StreamStats {
   utc: string;
 }
 
+// Cache for stats with 1 second TTL
+const statsCache = new Map<string, { data: StreamStats; timestamp: number }>();
+const CACHE_TTL = 1000; // 1 second
+const FETCH_TIMEOUT = 2000; // 2 seconds timeout
+
 export const fetchStreamStats = async (statsUrl: string): Promise<StreamStats | null> => {
+  // Check cache first
+  const cached = statsCache.get(statsUrl);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+
   try {
-    const response = await fetch(statsUrl);
-    if (!response.ok) throw new Error('Failed to fetch stats');
-    return await response.json();
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+    const response = await fetch(statsUrl, {
+      signal: controller.signal,
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Update cache
+    statsCache.set(statsUrl, { data, timestamp: Date.now() });
+    
+    return data;
   } catch (error) {
-    console.error(`Error fetching stats from ${statsUrl}:`, error);
+    // Don't log abort errors to reduce console noise
+    if (error instanceof Error && error.name !== 'AbortError') {
+      console.warn(`Stats fetch failed for ${statsUrl}`);
+    }
     return null;
   }
 };
