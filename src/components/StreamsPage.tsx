@@ -1,16 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Download, Plus, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { ArrowLeft, Download, Plus, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { STREAMS, StreamConfig } from '@/lib/streams';
 import { TimeRange, generateCSV, downloadCSV } from '@/lib/csv';
 import StreamCard from './StreamCard';
 import { useToast } from '@/hooks/use-toast';
 import { PlakshaLogo } from './PlakshaLogo';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const StreamsPage = () => {
   const navigate = useNavigate();
@@ -22,6 +32,7 @@ const StreamsPage = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newStreamName, setNewStreamName] = useState('');
   const [newStreamUrl, setNewStreamUrl] = useState('');
+  const [deleteStreamId, setDeleteStreamId] = useState<string | null>(null);
 
   const STREAMS_PER_PAGE = 4;
   const totalPages = Math.ceil(streams.length / STREAMS_PER_PAGE);
@@ -30,12 +41,15 @@ const StreamsPage = () => {
     (currentPage + 1) * STREAMS_PER_PAGE
   );
 
-  useEffect(() => {
-    // Load streams from localStorage
+  const loadStreams = useCallback(() => {
     const savedStreams = localStorage.getItem('customStreams');
     const customStreams = savedStreams ? JSON.parse(savedStreams) : [];
     setStreams([...STREAMS, ...customStreams]);
   }, []);
+
+  useEffect(() => {
+    loadStreams();
+  }, [loadStreams]);
 
   const handleAddStream = () => {
     if (!newStreamName.trim() || !newStreamUrl.trim()) {
@@ -70,6 +84,50 @@ const StreamsPage = () => {
       title: 'Stream Added',
       description: `${newStreamName} has been added successfully`,
     });
+  };
+
+  const handleDeleteStream = (streamId: string) => {
+    const stream = streams.find(s => s.id === streamId);
+    
+    // Only allow deletion of custom streams
+    if (!stream || !streamId.startsWith('custom_')) {
+      toast({
+        title: 'Cannot Delete',
+        description: 'Only custom streams can be deleted',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setDeleteStreamId(streamId);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteStreamId) return;
+
+    const stream = streams.find(s => s.id === deleteStreamId);
+    
+    // Remove from localStorage
+    const savedStreams = localStorage.getItem('customStreams');
+    const customStreams = savedStreams ? JSON.parse(savedStreams) : [];
+    const updatedCustomStreams = customStreams.filter((s: StreamConfig) => s.id !== deleteStreamId);
+    localStorage.setItem('customStreams', JSON.stringify(updatedCustomStreams));
+
+    // Update state
+    setStreams(streams.filter(s => s.id !== deleteStreamId));
+    
+    // Adjust current page if necessary
+    const newTotalPages = Math.ceil((streams.length - 1) / STREAMS_PER_PAGE);
+    if (currentPage >= newTotalPages && newTotalPages > 0) {
+      setCurrentPage(newTotalPages - 1);
+    }
+
+    toast({
+      title: 'Stream Deleted',
+      description: `${stream?.name} has been removed`,
+    });
+
+    setDeleteStreamId(null);
   };
 
   const handleDownload = async (streamId: string, streamName: string) => {
@@ -236,7 +294,19 @@ const StreamsPage = () => {
         {/* Streams Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fade-in">
           {currentStreams.map((stream) => (
-            <StreamCard key={stream.id} stream={stream} />
+            <div key={stream.id} className="relative group">
+              <StreamCard stream={stream} />
+              {stream.id.startsWith('custom_') && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  onClick={() => handleDeleteStream(stream.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           ))}
         </div>
 
@@ -303,6 +373,24 @@ const StreamsPage = () => {
       </footer>
       
       <PlakshaLogo />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteStreamId} onOpenChange={() => setDeleteStreamId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Stream</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this stream? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
