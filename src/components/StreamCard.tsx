@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { StreamConfig, StreamStats, fetchStreamStats } from '@/lib/streams';
@@ -12,24 +12,44 @@ const StreamCard = ({ stream }: StreamCardProps) => {
   const [stats, setStats] = useState<StreamStats | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(false);
   const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 3;
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await fetchStreamStats(stream.statsUrl);
+      if (data) {
+        setStats(data);
+        retryCountRef.current = 0;
+      }
+    } catch (err) {
+      // Swallow errors to avoid noisy logs when preview cannot reach LAN
+      retryCountRef.current++;
+      if (retryCountRef.current >= maxRetries) {
+        // Stop fetching after max retries
+        if (statsIntervalRef.current) {
+          clearInterval(statsIntervalRef.current);
+        }
+      }
+    }
+  }, [stream.statsUrl]);
 
   useEffect(() => {
-    // Fetch stats every second (do not decide online state from stats to avoid CORS false negatives)
-    const statsInterval = setInterval(async () => {
-      try {
-        const data = await fetchStreamStats(stream.statsUrl);
-        if (data) {
-          setStats(data);
-        }
-      } catch (err) {
-        // Swallow errors to avoid noisy logs when preview cannot reach LAN
-      }
-    }, 1000);
+    // Initial fetch
+    fetchStats();
+
+    // Fetch stats every 2 seconds (reduced from 1s for better performance)
+    statsIntervalRef.current = setInterval(fetchStats, 2000);
 
     return () => {
-      clearInterval(statsInterval);
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current);
+      }
     };
-  }, [stream]);
+  }, [fetchStats]);
 
   return (
     <Card className="overflow-hidden border-2 hover:border-primary transition-all duration-300 hover:shadow-lg">
@@ -57,23 +77,38 @@ const StreamCard = ({ stream }: StreamCardProps) => {
         {/* Stream Display */}
         <div className="relative aspect-video bg-black">
           {!imageError ? (
-            <img
-              src={stream.streamUrl}
-              alt={`${stream.name} live feed`}
-              className="w-full h-full object-contain"
-              onLoad={() => setIsOnline(true)}
-              onError={() => {
-                setImageError(true);
-                setIsOnline(false);
-              }}
-            />
+            <>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                  <div className="text-center space-y-1">
+                    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                    <p className="text-xs text-muted-foreground">Loading stream...</p>
+                  </div>
+                </div>
+              )}
+              <img
+                ref={imgRef}
+                src={stream.streamUrl}
+                alt={`${stream.name} live feed`}
+                className="w-full h-full object-contain"
+                loading="lazy"
+                onLoad={() => {
+                  setIsOnline(true);
+                  setIsLoading(false);
+                }}
+                onError={() => {
+                  setImageError(true);
+                  setIsOnline(false);
+                  setIsLoading(false);
+                }}
+              />
+            </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted">
               <div className="text-center space-y-1">
                 <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto" />
-                <p className="text-xs text-muted-foreground">
-                  {isOnline ? 'Loading stream...' : 'Stream offline'}
-                </p>
+                <p className="text-xs text-muted-foreground">Stream offline</p>
+                <p className="text-xs text-muted-foreground/70">Check connection</p>
               </div>
             </div>
           )}
